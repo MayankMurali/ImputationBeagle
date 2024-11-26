@@ -909,6 +909,7 @@ task InterleaveVariants {
     String basename
 
     String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.5.0.0"
+    String bcftools_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.7-1.10.2-0.1.16-1669908889"
     Int cpu = 1
     Int memory_mb = 16000
     Int disk_size_gb = ceil(3.2*size(vcfs, "GiB")) + 100
@@ -919,8 +920,14 @@ task InterleaveVariants {
   command <<<
     set -e -o pipefail
 
+    # Merge the VCFs
     gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
     MergeVcfs -I ~{sep=" -I " vcfs} -O ~{basename}.vcf.gz
+
+    # Reorder the header
+    bcftools view -h ~{basename}.vcf.gz | sort -u > sorted_header.txt
+    bcftools reheader -h sorted_header.txt ~{basename}.vcf.gz -o ~{basename}.reheadered.vcf.gz
+    bcftools index -t ~{basename}.reheadered.vcf.gz
   >>>
   runtime {
     docker: gatk_docker
@@ -929,8 +936,8 @@ task InterleaveVariants {
     cpu: cpu
   }
   output {
-    File output_vcf = "~{basename}.vcf.gz"
-    File output_vcf_index = "~{basename}.vcf.gz.tbi"
+    File output_vcf = "~{basename}.reheadered.vcf.gz"
+    File output_vcf_index = "~{basename}.reheadered.vcf.gz.tbi"
   }
 }
 
