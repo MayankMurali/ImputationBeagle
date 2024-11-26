@@ -1,0 +1,5 @@
+version: 1.2
+workflows:
+  - name: ImputationBeagle
+    subclass: WDL
+    primaryDescriptorPath: /ImputationBeagle.wdl
